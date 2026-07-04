@@ -141,15 +141,15 @@
         <div class="flex gap-2" id="ownerBars"></div>
       </div>
 
-      <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3 text-sm">
-        <div>
-          <p class="font-semibold text-indigo-600 mb-1">🎯 핵심 액션 아이템</p>
-          <ul id="execActions" class="list-disc list-inside text-slate-600 space-y-1 text-[13px]"></ul>
+      <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 text-sm">
+        <div class="flex gap-2 mb-3">
+          <button onclick="selectDecisionTab('blocker')" id="tabBtn-blocker" class="flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition">🚨 Blocker</button>
+          <button onclick="selectDecisionTab('warning')" id="tabBtn-warning" class="flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition">⚠️ Warning</button>
+          <button onclick="selectDecisionTab('ref')" id="tabBtn-ref" class="flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition">📌 참조</button>
         </div>
-        <div>
-          <p class="font-semibold text-amber-600 mb-1">📈 기대 효과</p>
-          <ul id="execEffects" class="list-disc list-inside text-slate-600 space-y-1 text-[13px]"></ul>
-        </div>
+        <p id="decisionDesc" class="text-slate-600 text-[13px] leading-relaxed mb-3"></p>
+        <div id="decisionList" class="space-y-1.5"></div>
+        <div id="decisionDetail" class="hidden mt-3 pt-3 border-t border-slate-200 text-[13px] text-slate-600 space-y-1.5"></div>
       </div>
     </div>
 
@@ -406,7 +406,7 @@ function loadCompany(name){
   document.getElementById('ownerFilter').value = '전체';
   renderTasks();
   renderProgress();
-  renderExecContent();
+  selectDecisionTab('blocker');
   showDefaultPanel();
   document.getElementById('agreementText').value = currentCompany.agreement;
 }
@@ -468,16 +468,109 @@ function renderProgress(){
   });
 }
 
-/* ================= EXEC / STAFF CONTENT BLOCKS ================= */
-function renderExecContent(){
-  document.getElementById('execActions').innerHTML = `
-    <li>담당자별 진행률 최하위 영역 리소스 재배치 검토</li>
-    <li>긴급건 2건에 대한 임원 에스컬레이션 여부 결정</li>
-    <li>주간 정기 보고 체계로 진행 가시성 유지</li>`;
-  document.getElementById('execEffects').innerHTML = `
-    <li>병목 구간 조기 발견으로 일정 지연 리스크 사전 차단</li>
-    <li>담당자별 부하 시각화로 리소스 배분 의사결정 단축</li>
-    <li>고객사 대상 신뢰도 있는 진행 보고 근거 확보</li>`;
+/* ================= EXEC 의사결정 트래커 (Blocker / Warning / 참조) ================= */
+const DECISION_DATA = {
+  blocker:{
+    label:'🚨 Blocker',
+    color:'red',
+    desc:'지금 결정하지 않으면 개발 착수 자체가 막히는 항목입니다. 의견 충돌이나 미정 정책이 있으면 우선순위를 최상단으로 올립니다.',
+    items:[
+      {title:'CRM 인증 방식 확정', dialogue:[
+        {who:'PM (슬랙)', text:'"이번 주 내로 CRM 인증 방식 확정 안 되면 개발 일정 전체가 밀려요"'},
+        {who:'개발팀 (이슈 코멘트)', text:'"자동 갱신 방식으로 가려면 CRM사 기술지원팀 스펙 문서부터 받아야 합니다"'}
+      ], note:'인증 방식은 API 연동 전체 구현 방향을 좌우하므로 가장 먼저 결정이 필요합니다.'},
+      {title:'브랜드 가이드 컬러 기준 확정', dialogue:[
+        {who:'디자인팀 (메일)', text:'"고객사 가이드북과 실제 로고 파일의 팬톤 값이 달라서 어느 쪽이 기준인지 확인이 필요합니다"'},
+        {who:'고객사 마케팅팀', text:'"확인 중입니다"라는 답변 이후 3일째 회신 없음'}
+      ], note:'컬러 기준이 확정되지 않으면 템플릿 최종 산출물 반영 자체가 불가능합니다.'},
+      {title:'KPI 측정 기준 확정', dialogue:[
+        {who:'고객사 마케팅 총괄', text:'"전환율은 세션 기준으로 보고 싶습니다"'},
+        {who:'경영진 보고 담당', text:'"저희는 유저 기준으로 집계해왔는데, 통일이 필요합니다"'}
+      ], note:'측정 기준이 정해지지 않으면 경영진 대시보드 설계 자체를 시작할 수 없습니다.'}
+    ]
+  },
+  warning:{
+    label:'⚠️ Warning',
+    color:'amber',
+    desc:'이번 스프린트 안에는 결정이 필요한 항목입니다. 방치하면 재작업 비용이나 일정 지연으로 이어질 수 있습니다.',
+    items:[
+      {title:'이벤트 트리거 워크플로우 범위', dialogue:[
+        {who:'개발팀', text:'"CRM 연동이 언제 끝나느냐에 따라 워크플로우 빌더 범위를 다시 잡아야 합니다"'},
+        {who:'PM', text:'"일단 1차 범위로 좁혀서 이번 스프린트 안에는 결론 내죠"'}
+      ], note:'CRM 연동 완료 시점에 따라 개발 범위와 일정이 함께 조정되어야 합니다.'},
+      {title:'체크아웃 UX 롤백 여부', dialogue:[
+        {who:'데이터 분석팀', text:'"신규 시안 적용 후 이탈률이 12%p 올랐습니다"'},
+        {who:'디자인팀', text:'"A/B 테스트 결과부터 보고 롤백 여부를 정하겠습니다"'}
+      ], note:'테스트 결과에 따라 재작업 규모가 크게 달라지는 항목이라 이번 주 안에 결론이 필요합니다.'},
+      {title:'주간 보고 포맷 표준화', dialogue:[
+        {who:'PM', text:'"팀마다 보고 포맷이 달라서 경영진이 매번 다시 정리해야 합니다"'},
+        {who:'경영진', text:'"이번 스프린트 안에 공통 포맷으로 정리해주세요"'}
+      ], note:'포맷이 통일되지 않으면 매주 보고서 재가공에 불필요한 리소스가 소모됩니다.'}
+    ]
+  },
+  ref:{
+    label:'📌 참조',
+    color:'slate',
+    desc:'이미 합의되었거나 착수 시점이 정해진 항목입니다. 별도 결정 없이 일정대로 진행하되, 공유 목적으로 기록해둡니다.',
+    items:[
+      {title:'데이터 파이프라인 QA 일정', dialogue:[
+        {who:'개발팀', text:'"정식 오픈 전 데이터 정합성 검증은 이미 일정표에 반영되어 있습니다"'},
+        {who:'PM', text:'"별도 결정 없이 진행하시면 됩니다"'}
+      ], note:'이미 합의된 일정이므로 리마인드 목적으로만 기록합니다.'},
+      {title:'모바일 반응형 시안 착수', dialogue:[
+        {who:'디자인팀', text:'"디자인 검수만 끝나면 바로 다음 스프린트에 착수 가능합니다"'},
+        {who:'PM', text:'"검수 일정 공유해주시면 타임라인에 반영하겠습니다"'}
+      ], note:'착수 조건과 시점이 이미 정해진 항목으로, 일정표 공유용으로만 기록합니다.'},
+      {title:'대시보드 와이어프레임 v2 확정', dialogue:[
+        {who:'디자인팀', text:'"2차 버전으로 확정, 개발 착수 기준 자료로 공유 완료했습니다"'},
+        {who:'개발팀', text:'"확인했습니다, 이 버전 기준으로 진행하겠습니다"'}
+      ], note:'이미 합의되어 개발 착수 기준으로 쓰이고 있는 자료입니다.'}
+    ]
+  }
+};
+
+const DECISION_COLOR_CLASS = {
+  red:{active:'bg-red-50 border-red-400 text-red-600', item:'bg-red-50 border-red-100 text-red-700', dot:'bg-red-600'},
+  amber:{active:'bg-amber-50 border-amber-400 text-amber-700', item:'bg-amber-50 border-amber-100 text-amber-700', dot:'bg-amber-500'},
+  slate:{active:'bg-slate-100 border-slate-400 text-slate-700', item:'bg-slate-100 border-slate-200 text-slate-700', dot:'bg-slate-500'}
+};
+
+let currentDecisionTab = 'blocker';
+
+function selectDecisionTab(key){
+  currentDecisionTab = key;
+  ['blocker','warning','ref'].forEach(k=>{
+    const btn = document.getElementById('tabBtn-'+k);
+    const c = DECISION_COLOR_CLASS[DECISION_DATA[k].color];
+    btn.className = 'flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition ' +
+      (k===key ? c.active : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100');
+  });
+
+  const data = DECISION_DATA[key];
+  document.getElementById('decisionDesc').textContent = data.desc;
+
+  const c = DECISION_COLOR_CLASS[data.color];
+  document.getElementById('decisionList').innerHTML = data.items.map((item, idx) => `
+    <button onclick="showDecisionDetail('${key}', ${idx})" class="w-full flex items-center gap-2 ${c.item} border rounded-lg px-3 py-2 text-left text-[13px] hover:opacity-80 transition">
+      <span class="w-4 h-4 rounded-full ${c.dot} text-white text-[10px] flex items-center justify-center shrink-0">${idx+1}</span>
+      <span class="flex-1 break-keep">${item.title}</span>
+      <span class="text-[11px] opacity-70 shrink-0">눌러서 보기</span>
+    </button>
+  `).join('');
+
+  document.getElementById('decisionDetail').classList.add('hidden');
+}
+
+function showDecisionDetail(key, idx){
+  const data = DECISION_DATA[key];
+  const item = data.items[idx];
+  const dialogueHtml = item.dialogue.map(d => `<p class="break-keep">| <b>${d.who}</b>: ${d.text}</p>`).join('');
+  document.getElementById('decisionDetail').innerHTML = `
+    <p class="font-semibold text-slate-700">${data.label} ${idx+1}번 — ${item.title}</p>
+    ${dialogueHtml}
+    <p class="pt-1 break-keep">${item.note}</p>
+  `;
+  document.getElementById('decisionDetail').classList.remove('hidden');
 }
 
 
