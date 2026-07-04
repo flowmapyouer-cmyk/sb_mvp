@@ -80,10 +80,41 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-    <!-- ============ 좌측 2구역: 경영진 진행 모니터링 ============ -->
+    <!-- ============ 좌측 1구역: 실무자 진행도 ============ -->
     <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="font-bold flex items-center gap-2">📊 진행 모니터링 <span class="text-xs font-normal text-slate-500">(경영진 뷰)</span></h2>
+        <h2 class="font-bold flex items-center gap-2">✅ 실무자 진행도</h2>
+        <button onclick="openInfo('staff')" class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center">!</button>
+      </div>
+
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs text-slate-500">담당자 필터</span>
+        <select id="ownerFilter" onchange="renderTasks()" class="bg-white border border-slate-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none">
+          <option value="전체">전체</option>
+          <option value="PM">PM</option>
+          <option value="개발">개발</option>
+          <option value="디자인">디자인</option>
+        </select>
+      </div>
+
+      <div id="taskList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+
+      <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3 text-sm mt-4">
+        <div>
+          <p class="font-semibold text-indigo-600 mb-1">🎯 핵심 액션 아이템</p>
+          <ul id="staffActions" class="list-disc list-inside text-slate-600 space-y-1 text-[13px]"></ul>
+        </div>
+        <div>
+          <p class="font-semibold text-amber-600 mb-1">📈 기대 효과</p>
+          <ul id="staffEffects" class="list-disc list-inside text-slate-600 space-y-1 text-[13px]"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 우측 2구역: 진행 모니터링 ============ -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold flex items-center gap-2">📊 진행 모니터링</h2>
         <button onclick="openInfo('exec')" class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center">!</button>
       </div>
 
@@ -114,43 +145,12 @@
       </div>
     </div>
 
-    <!-- ============ 우측 1구역: 실무자 진행도 ============ -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-bold flex items-center gap-2">✅ 실무자 진행도 <span class="text-xs font-normal text-slate-500">(담당자 뷰)</span></h2>
-        <button onclick="openInfo('staff')" class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center">!</button>
-      </div>
-
-      <div class="flex items-center gap-2 mb-3">
-        <span class="text-xs text-slate-500">담당자 필터</span>
-        <select id="ownerFilter" onchange="renderTasks()" class="bg-white border border-slate-300 text-xs rounded-lg px-2 py-1.5 focus:outline-none">
-          <option value="전체">전체</option>
-          <option value="PM">PM</option>
-          <option value="개발">개발</option>
-          <option value="디자인">디자인</option>
-        </select>
-      </div>
-
-      <div id="taskList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
-
-      <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3 text-sm mt-4">
-        <div>
-          <p class="font-semibold text-indigo-600 mb-1">🎯 핵심 액션 아이템</p>
-          <ul id="staffActions" class="list-disc list-inside text-slate-600 space-y-1 text-[13px]"></ul>
-        </div>
-        <div>
-          <p class="font-semibold text-amber-600 mb-1">📈 기대 효과</p>
-          <ul id="staffEffects" class="list-disc list-inside text-slate-600 space-y-1 text-[13px]"></ul>
-        </div>
-      </div>
-    </div>
-
   </div>
 
   <!-- ============ 3구역: 고객사 협의 ============ -->
   <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mt-5">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="font-bold flex items-center gap-2">🤝 고객사 협의안 <span class="text-xs font-normal text-slate-500" id="companyLabel"></span></h2>
+      <h2 class="font-bold flex items-center gap-2">🤝 고객사 - <span id="companyLabel" class="text-indigo-600"></span></h2>
       <div class="flex items-center gap-2">
         <button onclick="downloadAgreement()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 transition rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1">⬇️ 협의안 다운로드</button>
         <button onclick="openInfo('client')" class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center">!</button>
@@ -376,7 +376,7 @@ function setStatus(msg){ document.getElementById('statusMsg').textContent = msg;
 /* ================= LOAD COMPANY ================= */
 function loadCompany(name){
   currentCompany = JSON.parse(JSON.stringify(DB[name])); // deep clone for editable state
-  document.getElementById('companyLabel').textContent = `— ${name}`;
+  document.getElementById('companyLabel').textContent = name;
   document.getElementById('ownerFilter').value = '전체';
   renderTasks();
   renderProgress();
