@@ -175,7 +175,7 @@
 
 <!-- ============ 04·우선순위 판단 정보 모달 ============ -->
 <div id="infoModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 p-4" onclick="if(event.target===this)closeInfo()">
-  <div class="bg-white border border-indigo-200 rounded-2xl p-6 max-w-lg w-full shadow-xl fade-in">
+  <div class="bg-white border border-indigo-200 rounded-2xl p-6 max-w-xl w-full shadow-xl fade-in">
     <div class="flex items-center justify-between mb-3">
       <h3 id="infoTitle" class="font-bold text-indigo-600">04 · 우선순위 판단</h3>
       <button onclick="closeInfo()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
@@ -271,11 +271,19 @@ let attachedFile = null;
 /* ================= INFO POPUP CONTENT (04·우선순위 판단) ================= */
 const INFO_CONTENT = {
   staff:{
-    title:"04 · 우선순위 판단 (실무자 뷰)",
-    body:`실무자 탭은 <b>긴급도 × 담당 영역</b> 2축으로 케이스를 분류합니다.<br><br>
-    🔴 <b>긴급건</b>: 외부 의존성(고객사/협력사 회신)이 걸려 있고, 지연 시 다음 일정에 즉각 영향을 주는 케이스<br>
-    🟡 <b>일반건</b>: 내부 리소스로 통제 가능하고 일정 여유가 있는 케이스<br><br>
-    긴급건은 케이스 카드로 별도 노출되며 <b>케이스번호 | 제목 · 한줄 요약 · 비즈니스 맥락 · 미결 사항</b> 4요소로 고정 출력되어, 담당자가 맥락을 다시 찾지 않고도 바로 조치할 수 있게 합니다.`
+    title:"— 04 · 우선순위 판단",
+    body:`<div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+      <span class="inline-block bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded-full mb-3">P1 · P2 · P3</span>
+      <p class="text-sm text-slate-700 leading-relaxed mb-4">여섯 가지 신호를 한꺼번에 놓고 판단합니다. 신호 하나만 보고 등급을 정하지 않고, 여러 신호가 겹칠 때 그 조합의 세기를 함께 봅니다.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-slate-700">
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2">① 창업자가 <b>"꼭"</b>이라 못박았는가</div>
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2">② <b>데모·마감</b> 같은 외부 일정이 걸렸는가</div>
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2">③ <b>대표·전문가</b>가 직접 지시했는가</div>
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2">④ <b>문의·불만</b>이 몰리는가</div>
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2">⑤ 이미 <b>"나중에"</b>로 미뤄졌는가</div>
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2">⑥ <b>정책·수치</b>가 아직 안 정해졌는가</div>
+      </div>
+    </div>`
   },
   exec:{
     title:"04 · 우선순위 판단 (경영진 뷰)",
