@@ -162,11 +162,11 @@
 
 </div>
 
-<!-- ============ 긴급 케이스 모달 ============ -->
+<!-- ============ 케이스 상세 모달 ============ -->
 <div id="urgentModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 p-4" onclick="if(event.target===this)closeUrgent()">
-  <div class="bg-white border border-red-200 rounded-2xl p-6 max-w-md w-full shadow-xl fade-in">
+  <div id="caseModalBox" class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-xl fade-in">
     <div class="flex items-center justify-between mb-3">
-      <h3 class="font-bold text-red-600">🚨 긴급 케이스</h3>
+      <h3 id="caseModalTitle" class="font-bold flex items-center gap-2"></h3>
       <button onclick="closeUrgent()" class="text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
     </div>
     <div id="urgentBody" class="text-sm space-y-2 text-slate-700"></div>
@@ -190,16 +190,22 @@ const DB = {
   "테크노바": {
     company: "테크노바",
     tasks: [
-      {id:1, owner:"PM", text:"3분기 마케팅 자동화 킥오프 미팅 완료", done:true, urgent:false},
-      {id:2, owner:"PM", text:"고객사 요구사항 정의서(RFP) 확정", done:true, urgent:false},
+      {id:1, owner:"PM", text:"3분기 마케팅 자동화 킥오프 미팅 완료", done:true, urgent:false,
+        case:{no:"TN-0201", title:"마케팅 자동화 킥오프 미팅", summary:"3분기 킥오프 미팅을 통해 프로젝트 범위와 일정을 공유함", context:"프로젝트 착수 단계의 표준 킥오프로 별도 리스크 없음", pending:"없음 (완료)"}},
+      {id:2, owner:"PM", text:"고객사 요구사항 정의서(RFP) 확정", done:true, urgent:false,
+        case:{no:"TN-0212", title:"RFP 확정", summary:"고객사 요구사항 정의서 최종 확정 및 서명 완료", context:"향후 개발 범위 산정의 기준 문서로 활용됨", pending:"없음 (완료)"}},
       {id:3, owner:"개발", text:"CRM-마케팅 자동화 API 연동 개발", done:false, urgent:true,
-        case:{no:"TN-0231", title:"CRM 연동 인증 토큰 만료 이슈", summary:"외부 CRM API 인증 토큰이 24시간마다 만료되어 야간 배치가 실패함", context:"고객사 주력 캠페인 발송 자동화가 이 연동에 의존하고 있어 지연 시 캠페인 일정 전체가 밀림", pending:"CRM사 기술지원팀 회신 대기 중 (D+2)"}},
-      {id:4, owner:"개발", text:"이벤트 트리거 워크플로우 빌더 구현", done:false, urgent:false},
-      {id:5, owner:"디자인", text:"대시보드 UI 와이어프레임 v2 제작", done:true, urgent:false},
+        case:{no:"TN-0231", title:"CRM 연동 인증 토큰 만료 이슈", summary:"외부 CRM API 인증 토큰이 24시간마다 만료되어 야간 배치가 실패함", context:"고객사 주력 캠페인 발송 자동화가 이 연동에 의존하고 있어 지연 시 캠페인 일정 전체가 밀림", pending:"CRM사 기술지원팀 회신 대기 중 (D+2)", priority:"P1"}},
+      {id:4, owner:"개발", text:"이벤트 트리거 워크플로우 빌더 구현", done:false, urgent:false,
+        case:{no:"TN-0220", title:"워크플로우 빌더 설계", summary:"이벤트 트리거 기반 워크플로우 빌더 화면 설계 진행 중", context:"CRM 연동 완료 후 실제 데이터 흐름 테스트가 예정되어 있음", pending:"CRM 연동 완료 대기"}},
+      {id:5, owner:"디자인", text:"대시보드 UI 와이어프레임 v2 제작", done:true, urgent:false,
+        case:{no:"TN-0225", title:"대시보드 와이어프레임 v2", summary:"경영진 대시보드 와이어프레임 2차 버전 제작 완료", context:"실제 UI 개발 착수의 기준 자료로 사용됨", pending:"없음 (완료)"}},
       {id:6, owner:"디자인", text:"이메일 템플릿 브랜드 가이드 적용", done:false, urgent:true,
-        case:{no:"TN-0245", title:"브랜드 가이드 색상 코드 불일치", summary:"고객사 제공 가이드와 실제 로고 파일의 팬톤 색상값이 상이함", context:"협의안 승인 전 최종 산출물에 반영되어야 하며 마케팅팀 컨펌 필요", pending:"고객사 마케팅팀 컬러 재확인 요청 발송, 미회신"}},
-      {id:7, owner:"PM", text:"주간 진행 보고서 경영진 공유", done:false, urgent:false},
-      {id:8, owner:"개발", text:"데이터 파이프라인 QA 테스트", done:false, urgent:false},
+        case:{no:"TN-0245", title:"브랜드 가이드 색상 코드 불일치", summary:"고객사 제공 가이드와 실제 로고 파일의 팬톤 색상값이 상이함", context:"협의안 승인 전 최종 산출물에 반영되어야 하며 마케팅팀 컨펌 필요", pending:"고객사 마케팅팀 컬러 재확인 요청 발송, 미회신", priority:"P2"}},
+      {id:7, owner:"PM", text:"주간 진행 보고서 경영진 공유", done:false, urgent:false,
+        case:{no:"TN-0233", title:"주간 보고서 작성", summary:"경영진 공유용 주간 진행 보고서 작성 예정", context:"정기 보고 체계 유지를 위한 루틴 업무", pending:"이번 주 데이터 취합 대기"}},
+      {id:8, owner:"개발", text:"데이터 파이프라인 QA 테스트", done:false, urgent:false,
+        case:{no:"TN-0240", title:"데이터 파이프라인 QA", summary:"마케팅 자동화 데이터 파이프라인 품질 검증 예정", context:"정식 오픈 전 데이터 정합성 확보가 필요한 단계", pending:"테스트 케이스 작성 중"}},
     ],
     agreement:
 `■ 고객사 협의안 (테크노바 · 3분기 마케팅 자동화)
@@ -229,15 +235,20 @@ const DB = {
   "블루오션": {
     company: "블루오션",
     tasks: [
-      {id:1, owner:"PM", text:"신규 이커머스 리뉴얼 착수 보고", done:true, urgent:false},
+      {id:1, owner:"PM", text:"신규 이커머스 리뉴얼 착수 보고", done:true, urgent:false,
+        case:{no:"BO-0101", title:"이커머스 리뉴얼 착수 보고", summary:"신규 이커머스 리뉴얼 프로젝트 착수를 경영진에 보고 완료", context:"프로젝트 공식 개시를 알리는 보고 단계", pending:"없음 (완료)"}},
       {id:2, owner:"PM", text:"고객사 KPI 정의 워크숍 진행", done:false, urgent:true,
-        case:{no:"BO-0112", title:"KPI 정의 이견 발생", summary:"전환율 기준을 세션 기준으로 볼지 유저 기준으로 볼지 합의되지 않음", context:"경영진 보고용 핵심 지표가 확정되지 않아 대시보드 설계가 지연되고 있음", pending:"고객사 마케팅 총괄 미팅 일정 조율 중"}},
-      {id:3, owner:"개발", text:"결제 모듈 PG사 연동 테스트", done:false, urgent:false},
-      {id:4, owner:"개발", text:"상품 검색 엔진 성능 최적화", done:true, urgent:false},
-      {id:5, owner:"디자인", text:"모바일 반응형 UI 시안 제작", done:false, urgent:false},
+        case:{no:"BO-0112", title:"KPI 정의 이견 발생", summary:"전환율 기준을 세션 기준으로 볼지 유저 기준으로 볼지 합의되지 않음", context:"경영진 보고용 핵심 지표가 확정되지 않아 대시보드 설계가 지연되고 있음", pending:"고객사 마케팅 총괄 미팅 일정 조율 중", priority:"P2"}},
+      {id:3, owner:"개발", text:"결제 모듈 PG사 연동 테스트", done:false, urgent:false,
+        case:{no:"BO-0115", title:"PG사 연동 테스트", summary:"결제 모듈과 PG사 API 연동 테스트 진행 중", context:"체크아웃 리뉴얼 오픈 일정에 직접 영향을 줌", pending:"PG사 샌드박스 테스트 대기"}},
+      {id:4, owner:"개발", text:"상품 검색 엔진 성능 최적화", done:true, urgent:false,
+        case:{no:"BO-0120", title:"검색 엔진 성능 최적화", summary:"상품 검색 응답 속도 개선 작업 완료", context:"체크아웃 전환율 개선 목표의 선행 작업", pending:"없음 (완료)"}},
+      {id:5, owner:"디자인", text:"모바일 반응형 UI 시안 제작", done:false, urgent:false,
+        case:{no:"BO-0122", title:"모바일 반응형 시안", summary:"모바일 환경 반응형 UI 시안 제작 진행 중", context:"모바일 트래픽 비중이 높아 우선 검토 대상", pending:"디자인 검수 대기"}},
       {id:6, owner:"디자인", text:"체크아웃 플로우 UX 리서치", done:false, urgent:true,
-        case:{no:"BO-0128", title:"체크아웃 이탈률 급증", summary:"신규 체크아웃 시안 적용 후 이탈률이 기존 대비 12%p 상승", context:"협의안상 전환율 개선이 핵심 목표라 이탈률 상승은 계약 KPI 미달 리스크", pending:"A/B 테스트 결과 분석 대기 (D+3)"}},
-      {id:7, owner:"PM", text:"경영진 월간 리뷰 자료 작성", done:false, urgent:false},
+        case:{no:"BO-0128", title:"체크아웃 이탈률 급증", summary:"신규 체크아웃 시안 적용 후 이탈률이 기존 대비 12%p 상승", context:"협의안상 전환율 개선이 핵심 목표라 이탈률 상승은 계약 KPI 미달 리스크", pending:"A/B 테스트 결과 분석 대기 (D+3)", priority:"P1"}},
+      {id:7, owner:"PM", text:"경영진 월간 리뷰 자료 작성", done:false, urgent:false,
+        case:{no:"BO-0130", title:"경영진 월간 리뷰 자료", summary:"경영진 대상 월간 진행 리뷰 자료 작성 예정", context:"정기 보고 체계 유지를 위한 루틴 업무", pending:"이번 달 지표 취합 대기"}},
     ],
     agreement:
 `■ 고객사 협의안 (블루오션 · 이커머스 리뉴얼)
@@ -408,7 +419,9 @@ function renderTasks(){
           class="w-4 h-4 accent-emerald-500 shrink-0 cursor-pointer">
         <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 shrink-0">${t.owner}</span>
         <span class="flex-1 ${t.done?'line-through text-slate-400':'text-slate-700'}">${t.text}</span>
-        ${t.urgent ? `<button onclick='showUrgent(${JSON.stringify(t.case).replace(/'/g,"&apos;")})' class="text-[10px] px-2 py-1 rounded-full bg-red-600/90 hover:bg-red-500 text-white shrink-0 font-semibold">🚨 긴급건</button>` : ''}
+        ${t.urgent
+          ? `<button onclick='showCase(${JSON.stringify(t.case).replace(/'/g,"&apos;")}, true)' class="text-[10px] px-2 py-1 rounded-full bg-red-600/90 hover:bg-red-500 text-white shrink-0 font-semibold">🚨 긴급건</button>`
+          : `<button onclick='showCase(${JSON.stringify(t.case).replace(/'/g,"&apos;")}, false)' class="text-[10px] px-2 py-1 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 shrink-0 font-semibold">📋 케이스 확인</button>`}
       `;
       list.appendChild(row);
     });
@@ -471,8 +484,30 @@ function renderStaffContent(){
     <li>담당자 간 업무 중복/누락 방지</li>`;
 }
 
-/* ================= URGENT MODAL ================= */
-function showUrgent(c){
+/* ================= CASE DETAIL MODAL ================= */
+const PRIORITY_STYLE = {
+  P1:'bg-red-600 text-white',
+  P2:'bg-amber-400 text-slate-900',
+  P3:'bg-slate-400 text-white'
+};
+
+function showCase(c, isUrgent){
+  const box = document.getElementById('caseModalBox');
+  const titleEl = document.getElementById('caseModalTitle');
+
+  if(isUrgent){
+    box.classList.remove('border-slate-200');
+    box.classList.add('border-red-200');
+    titleEl.className = 'font-bold flex items-center gap-2 text-red-600';
+    const badge = c.priority ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLE[c.priority] || 'bg-slate-400 text-white'}">${c.priority}</span>` : '';
+    titleEl.innerHTML = `🚨 긴급 케이스 ${badge}`;
+  } else {
+    box.classList.remove('border-red-200');
+    box.classList.add('border-slate-200');
+    titleEl.className = 'font-bold flex items-center gap-2 text-slate-700';
+    titleEl.innerHTML = `📋 일반 케이스`;
+  }
+
   document.getElementById('urgentBody').innerHTML = `
     <p><span class="text-slate-500">케이스 번호 | 제목</span><br><b>${c.no} | ${c.title}</b></p>
     <p><span class="text-slate-500">한줄 요약</span><br>${c.summary}</p>
