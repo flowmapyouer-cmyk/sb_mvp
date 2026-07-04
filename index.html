@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세컨부스트 협업 대시보드 MVP</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:#0f172a;}
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-thumb{background:#475569;border-radius:4px;}
+  .fade-in{animation:fadeIn .35s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .bar-fill{transition:width .5s cubic-bezier(.4,0,.2,1);}
+  .toggle-dot{transition:transform .25s ease;}
+</style>
+</head>
+<body class="text-slate-100 min-h-screen pb-16">
+
+<!-- ============ TOP: 업로드 & 필터 ============ -->
+<div class="max-w-7xl mx-auto px-4 pt-6">
+  <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur">
+    <div class="flex items-center justify-between mb-3">
+      <h1 class="text-lg font-bold tracking-tight flex items-center gap-2">
+        <span class="text-indigo-400">🚀</span> 세컨부스트 협업 대시보드
+      </h1>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">🌐 맥락 필터</span>
+          <select id="langFilter" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <option value="ko">한국어 (기본)</option>
+            <option value="en">영어</option>
+            <option value="ja">일본어</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">🧠 Custom LLM 학습 모드</span>
+          <button id="llmToggle" onclick="toggleLLM()" class="w-11 h-6 rounded-full bg-slate-700 relative transition-colors">
+            <span id="llmDot" class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow"></span>
+          </button>
+          <span id="llmState" class="text-xs font-semibold text-slate-500">OFF</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <textarea id="inputText" rows="3" placeholder="예) 테크노바 3분기 마케팅 자동화 프로젝트 회의록입니다. 주요 논의사항은..."
+        class="md:col-span-2 w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 placeholder:text-slate-500"></textarea>
+      <div class="flex flex-col gap-2">
+        <button onclick="submitData()" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 transition rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
+          <span id="submitSpinner" class="hidden animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+          <span id="submitLabel">📤 데이터 전송</span>
+        </button>
+        <div class="flex items-center gap-2">
+          <input id="companySearch" type="text" placeholder="고객사 명 검색 (예: 테크노바)"
+            class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-500">
+          <button onclick="searchCompany()" class="bg-emerald-600 hover:bg-emerald-500 transition rounded-xl px-3 py-2 text-sm font-semibold">🔍</button>
+        </div>
+      </div>
+    </div>
+    <p id="statusMsg" class="text-xs text-slate-500 mt-2 h-4"></p>
+  </div>
+</div>
+
+<!-- ============ MAIN: 2구역(좌) + 1구역(우) ============ -->
+<div id="mainArea" class="max-w-7xl mx-auto px-4 mt-5 hidden fade-in">
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <!-- ============ 좌측 2구역: 경영진 진행 모니터링 ============ -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold flex items-center gap-2">📊 진행 모니터링 <span class="text-xs font-normal text-slate-400">(경영진 뷰)</span></h2>
+        <button onclick="openInfo('exec')" class="w-5 h-5 rounded-full bg-slate-700 hover:bg-slate-600 text-xs flex items-center justify-center">!</button>
+      </div>
+
+      <div class="mb-4">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-400">전체 진행률</span>
+          <span id="overallPct" class="font-bold text-emerald-400">0%</span>
+        </div>
+        <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+          <div id="overallBar" class="bar-fill h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <p class="text-xs text-slate-400 mb-2">담당자별 달성도</p>
+        <div class="flex gap-2" id="ownerBars"></div>
+      </div>
+
+      <div class="bg-slate-800/60 rounded-xl p-4 space-y-3 text-sm">
+        <div>
+          <p class="font-semibold text-indigo-300 mb-1">🎯 핵심 액션 아이템</p>
+          <ul id="execActions" class="list-disc list-inside text-slate-300 space-y-1 text-[13px]"></ul>
+        </div>
+        <div>
+          <p class="font-semibold text-amber-300 mb-1">📈 기대 효과</p>
+          <ul id="execEffects" class="list-disc list-inside text-slate-300 space-y-1 text-[13px]"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 우측 1구역: 실무자 진행도 ============ -->
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-bold flex items-center gap-2">✅ 실무자 진행도 <span class="text-xs font-normal text-slate-400">(담당자 뷰)</span></h2>
+        <button onclick="openInfo('staff')" class="w-5 h-5 rounded-full bg-slate-700 hover:bg-slate-600 text-xs flex items-center justify-center">!</button>
+      </div>
+
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs text-slate-400">담당자 필터</span>
+        <select id="ownerFilter" onchange="renderTasks()" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2 py-1.5 focus:outline-none">
+          <option value="전체">전체</option>
+          <option value="PM">PM</option>
+          <option value="개발">개발</option>
+          <option value="디자인">디자인</option>
+        </select>
+      </div>
+
+      <div id="taskList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+
+      <div class="bg-slate-800/60 rounded-xl p-4 space-y-3 text-sm mt-4">
+        <div>
+          <p class="font-semibold text-indigo-300 mb-1">🎯 핵심 액션 아이템</p>
+          <ul id="staffActions" class="list-disc list-inside text-slate-300 space-y-1 text-[13px]"></ul>
+        </div>
+        <div>
+          <p class="font-semibold text-amber-300 mb-1">📈 기대 효과</p>
+          <ul id="staffEffects" class="list-disc list-inside text-slate-300 space-y-1 text-[13px]"></ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ 3구역: 고객사 협의 ============ -->
+  <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl mt-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-bold flex items-center gap-2">🤝 고객사 협의안 <span class="text-xs font-normal text-slate-400" id="companyLabel"></span></h2>
+      <div class="flex items-center gap-2">
+        <button onclick="downloadAgreement()" class="bg-slate-700 hover:bg-slate-600 transition rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1">⬇️ 협의안 다운로드</button>
+        <button onclick="openInfo('client')" class="w-5 h-5 rounded-full bg-slate-700 hover:bg-slate-600 text-xs flex items-center justify-center">!</button>
+      </div>
+    </div>
+    <textarea id="agreementText" rows="10" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+    <p class="text-xs text-slate-500 mt-2">✏️ 내용을 자유롭게 수정한 뒤 다운로드하면 수정본이 저장됩니다.</p>
+  </div>
+
+</div>
+
+<!-- ============ 긴급 케이스 모달 ============ -->
+<div id="urgentModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="if(event.target===this)closeUrgent()">
+  <div class="bg-slate-900 border border-red-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl fade-in">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-bold text-red-400">🚨 긴급 케이스</h3>
+      <button onclick="closeUrgent()" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+    </div>
+    <div id="urgentBody" class="text-sm space-y-2 text-slate-200"></div>
+  </div>
+</div>
+
+<!-- ============ 04·우선순위 판단 정보 모달 ============ -->
+<div id="infoModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" onclick="if(event.target===this)closeInfo()">
+  <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl fade-in">
+    <div class="flex items-center justify-between mb-3">
+      <h3 id="infoTitle" class="font-bold text-indigo-300">04 · 우선순위 판단</h3>
+      <button onclick="closeInfo()" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+    </div>
+    <div id="infoBody" class="text-sm space-y-2 text-slate-300 leading-relaxed"></div>
+  </div>
+</div>
+
+<script>
+/* ================= MOCK DATABASE ================= */
+const DB = {
+  "테크노바": {
+    company: "테크노바",
+    tasks: [
+      {id:1, owner:"PM", text:"3분기 마케팅 자동화 킥오프 미팅 완료", done:true, urgent:false},
+      {id:2, owner:"PM", text:"고객사 요구사항 정의서(RFP) 확정", done:true, urgent:false},
+      {id:3, owner:"개발", text:"CRM-마케팅 자동화 API 연동 개발", done:false, urgent:true,
+        case:{no:"TN-0231", title:"CRM 연동 인증 토큰 만료 이슈", summary:"외부 CRM API 인증 토큰이 24시간마다 만료되어 야간 배치가 실패함", context:"고객사 주력 캠페인 발송 자동화가 이 연동에 의존하고 있어 지연 시 캠페인 일정 전체가 밀림", pending:"CRM사 기술지원팀 회신 대기 중 (D+2)"}},
+      {id:4, owner:"개발", text:"이벤트 트리거 워크플로우 빌더 구현", done:false, urgent:false},
+      {id:5, owner:"디자인", text:"대시보드 UI 와이어프레임 v2 제작", done:true, urgent:false},
+      {id:6, owner:"디자인", text:"이메일 템플릿 브랜드 가이드 적용", done:false, urgent:true,
+        case:{no:"TN-0245", title:"브랜드 가이드 색상 코드 불일치", summary:"고객사 제공 가이드와 실제 로고 파일의 팬톤 색상값이 상이함", context:"협의안 승인 전 최종 산출물에 반영되어야 하며 마케팅팀 컨펌 필요", pending:"고객사 마케팅팀 컬러 재확인 요청 발송, 미회신"}},
+      {id:7, owner:"PM", text:"주간 진행 보고서 경영진 공유", done:false, urgent:false},
+      {id:8, owner:"개발", text:"데이터 파이프라인 QA 테스트", done:false, urgent:false},
+    ],
+    agreement:
+`■ 고객사 협의안 (테크노바 · 3분기 마케팅 자동화)
+
+1. 프로젝트 범위
+- CRM 연동 기반 마케팅 자동화 워크플로우 구축
+- 이벤트 트리거형 캠페인 발송 체계 도입
+
+2. 일정 합의
+- 1차 오픈: 2026-08-15 (베타)
+- 정식 오픈: 2026-09-01
+
+3. 핵심 협의 사항
+✅ CRM 인증 이슈 해결 전까지 임시 수동 발송 프로세스 병행
+✅ 브랜드 가이드 컬러 최종본 확정 후 템플릿 일괄 반영
+✅ 주간 단위 진행 보고 및 이슈 공유 체계 유지
+
+4. 미결 사항
+⚠️ CRM사 기술지원 회신 대기 (D+2)
+⚠️ 마케팅팀 컬러 가이드 재확인 대기
+
+5. 다음 액션
+🚀 CRM 인증 이슈 해결 즉시 자동 발송 전환
+🚀 9월 1일 정식 오픈 목표로 QA 일정 확정`
+  },
+
+  "블루오션": {
+    company: "블루오션",
+    tasks: [
+      {id:1, owner:"PM", text:"신규 이커머스 리뉴얼 착수 보고", done:true, urgent:false},
+      {id:2, owner:"PM", text:"고객사 KPI 정의 워크숍 진행", done:false, urgent:true,
+        case:{no:"BO-0112", title:"KPI 정의 이견 발생", summary:"전환율 기준을 세션 기준으로 볼지 유저 기준으로 볼지 합의되지 않음", context:"경영진 보고용 핵심 지표가 확정되지 않아 대시보드 설계가 지연되고 있음", pending:"고객사 마케팅 총괄 미팅 일정 조율 중"}},
+      {id:3, owner:"개발", text:"결제 모듈 PG사 연동 테스트", done:false, urgent:false},
+      {id:4, owner:"개발", text:"상품 검색 엔진 성능 최적화", done:true, urgent:false},
+      {id:5, owner:"디자인", text:"모바일 반응형 UI 시안 제작", done:false, urgent:false},
+      {id:6, owner:"디자인", text:"체크아웃 플로우 UX 리서치", done:false, urgent:true,
+        case:{no:"BO-0128", title:"체크아웃 이탈률 급증", summary:"신규 체크아웃 시안 적용 후 이탈률이 기존 대비 12%p 상승", context:"협의안상 전환율 개선이 핵심 목표라 이탈률 상승은 계약 KPI 미달 리스크", pending:"A/B 테스트 결과 분석 대기 (D+3)"}},
+      {id:7, owner:"PM", text:"경영진 월간 리뷰 자료 작성", done:false, urgent:false},
+    ],
+    agreement:
+`■ 고객사 협의안 (블루오션 · 이커머스 리뉴얼)
+
+1. 프로젝트 범위
+- 결제/검색 성능 개선 및 체크아웃 UX 리뉴얼
+- 경영진 보고용 KPI 대시보드 구축
+
+2. 일정 합의
+- 결제 모듈 QA 완료: 2026-07-20
+- 체크아웃 리뉴얼 오픈: 2026-08-10
+
+3. 핵심 협의 사항
+✅ KPI 정의(세션 vs 유저 기준) 다음 워크숍에서 최종 확정
+✅ 체크아웃 이탈률 상승 원인 분석 후 롤백 여부 결정
+✅ 월간 경영진 리뷰 자료 정기 공유
+
+4. 미결 사항
+⚠️ KPI 정의 워크숍 일정 미확정
+⚠️ 체크아웃 A/B 테스트 결과 대기 중
+
+5. 다음 액션
+🚀 A/B 테스트 결과 기반 체크아웃 시안 확정
+🚀 결제 모듈 QA 통과 즉시 8월 10일 오픈 진행`
+  }
+};
+
+let currentCompany = null;
+
+/* ================= INFO POPUP CONTENT (04·우선순위 판단) ================= */
+const INFO_CONTENT = {
+  staff:{
+    title:"04 · 우선순위 판단 (실무자 뷰)",
+    body:`실무자 탭은 <b>긴급도 × 담당 영역</b> 2축으로 케이스를 분류합니다.<br><br>
+    🔴 <b>긴급건</b>: 외부 의존성(고객사/협력사 회신)이 걸려 있고, 지연 시 다음 일정에 즉각 영향을 주는 케이스<br>
+    🟡 <b>일반건</b>: 내부 리소스로 통제 가능하고 일정 여유가 있는 케이스<br><br>
+    긴급건은 케이스 카드로 별도 노출되며 <b>케이스번호 | 제목 · 한줄 요약 · 비즈니스 맥락 · 미결 사항</b> 4요소로 고정 출력되어, 담당자가 맥락을 다시 찾지 않고도 바로 조치할 수 있게 합니다.`
+  },
+  exec:{
+    title:"04 · 우선순위 판단 (경영진 뷰)",
+    body:`경영진 탭은 <b>전체 진행률 영향도</b> 기준으로 우선순위를 정렬합니다.<br><br>
+    📊 담당자별 달성도가 전체 평균보다 낮은 영역을 자동으로 하이라이트하여 병목 구간을 즉시 파악할 수 있게 합니다.<br>
+    🎯 핵심 액션 아이템은 "완료 시 전체 진행률에 미치는 기여도"가 큰 순으로 정렬되어, 경영진이 어디에 자원을 재배치해야 할지 직관적으로 판단하도록 돕습니다.`
+  },
+  client:{
+    title:"04 · 우선순위 판단 (고객사 뷰)",
+    body:`고객사 탭은 <b>계약 KPI 리스크</b> 기준으로 협의 항목의 우선순위를 정합니다.<br><br>
+    ⚠️ 계약상 핵심 지표(전환율, 일정 등)에 직접 영향을 주는 미결 사항을 상단에 배치<br>
+    ✅ 이미 합의된 사항은 하단에 유지하여 재협의 리스크를 낮춤<br>
+    다운로드되는 협의안은 수정 시점의 최신 상태를 그대로 반영하여 고객사와의 커뮤니케이션 기록을 보존합니다.`
+  }
+};
+
+/* ================= COMPANY NAME EXTRACTION (rule-based) ================= */
+function extractCompanyName(text){
+  const known = Object.keys(DB);
+  for(const name of known){
+    if(text.includes(name)) return name;
+  }
+  // fallback: look for pattern like 'OOO(주)' or 'OOO 주식회사' or 'OOO사'
+  const m = text.match(/([가-힣A-Za-z]{2,10})\s*(주식회사|㈜|\(주\))/);
+  if(m) return m[1];
+  return known[0]; // default
+}
+
+/* ================= SUBMIT ================= */
+let firstSubmitDone = false;
+function submitData(){
+  const text = document.getElementById('inputText').value.trim();
+  if(!text){ setStatus('텍스트를 입력해주세요.'); return; }
+  const spinner = document.getElementById('submitSpinner');
+  const label = document.getElementById('submitLabel');
+  spinner.classList.remove('hidden');
+  label.textContent = '분석 중...';
+  setStatus('고객사 정보를 추출하고 있습니다...');
+
+  setTimeout(()=>{
+    spinner.classList.add('hidden');
+    label.textContent = '📤 데이터 전송';
+    const name = extractCompanyName(text);
+    document.getElementById('companySearch').value = name;
+    setStatus(`✅ '${name}' 고객사로 자동 인식되었습니다.`);
+    loadCompany(name);
+    if(!firstSubmitDone){
+      document.getElementById('mainArea').classList.remove('hidden');
+      firstSubmitDone = true;
+    }
+  }, 1000);
+}
+
+function searchCompany(){
+  const q = document.getElementById('companySearch').value.trim();
+  if(!q){ setStatus('고객사명을 입력해주세요.'); return; }
+  const match = Object.keys(DB).find(n=>n===q) || Object.keys(DB).find(n=>n.includes(q));
+  if(!match){ setStatus(`⚠️ '${q}' 고객사 데이터를 찾을 수 없습니다.`); return; }
+  loadCompany(match);
+  document.getElementById('mainArea').classList.remove('hidden');
+  setStatus(`✅ '${match}' 데이터로 화면이 갱신되었습니다.`);
+}
+
+function setStatus(msg){ document.getElementById('statusMsg').textContent = msg; }
+
+/* ================= LOAD COMPANY ================= */
+function loadCompany(name){
+  currentCompany = JSON.parse(JSON.stringify(DB[name])); // deep clone for editable state
+  document.getElementById('companyLabel').textContent = `— ${name}`;
+  document.getElementById('ownerFilter').value = '전체';
+  renderTasks();
+  renderProgress();
+  renderExecContent();
+  renderStaffContent();
+  document.getElementById('agreementText').value = currentCompany.agreement;
+}
+
+/* ================= TASK LIST (1구역) ================= */
+function renderTasks(){
+  const filter = document.getElementById('ownerFilter').value;
+  const list = document.getElementById('taskList');
+  list.innerHTML = '';
+  currentCompany.tasks
+    .filter(t => filter==='전체' || t.owner===filter)
+    .forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 bg-slate-800/60 rounded-lg px-3 py-2 text-sm';
+      row.innerHTML = `
+        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id}, this.checked)"
+          class="w-4 h-4 accent-emerald-500 shrink-0 cursor-pointer">
+        <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-700 text-slate-300 shrink-0">${t.owner}</span>
+        <span class="flex-1 ${t.done?'line-through text-slate-500':'text-slate-200'}">${t.text}</span>
+        ${t.urgent ? `<button onclick='showUrgent(${JSON.stringify(t.case).replace(/'/g,"&apos;")})' class="text-[10px] px-2 py-1 rounded-full bg-red-600/80 hover:bg-red-500 shrink-0 font-semibold">🚨 긴급건</button>` : ''}
+      `;
+      list.appendChild(row);
+    });
+}
+
+function toggleTask(id, checked){
+  const t = currentCompany.tasks.find(t=>t.id===id);
+  t.done = checked;
+  renderProgress();
+}
+
+/* ================= PROGRESS (2구역) ================= */
+function renderProgress(){
+  const tasks = currentCompany.tasks;
+  const overall = Math.round(tasks.filter(t=>t.done).length / tasks.length * 100);
+  document.getElementById('overallPct').textContent = overall + '%';
+  document.getElementById('overallBar').style.width = overall + '%';
+
+  const owners = ["PM","개발","디자인"];
+  const colors = {PM:'from-indigo-500 to-indigo-400', 개발:'from-sky-500 to-sky-400', 디자인:'from-fuchsia-500 to-fuchsia-400'};
+  const wrap = document.getElementById('ownerBars');
+  wrap.innerHTML = '';
+  owners.forEach(o=>{
+    const list = tasks.filter(t=>t.owner===o);
+    const pct = list.length ? Math.round(list.filter(t=>t.done).length/list.length*100) : 0;
+    const block = document.createElement('div');
+    block.className = 'flex-1 min-w-0';
+    block.innerHTML = `
+      <div class="flex justify-between text-[11px] mb-1">
+        <span class="text-slate-400">${o}</span>
+        <span class="font-semibold text-slate-200">${pct}%</span>
+      </div>
+      <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+        <div class="bar-fill h-full bg-gradient-to-r ${colors[o]}" style="width:${pct}%"></div>
+      </div>`;
+    wrap.appendChild(block);
+  });
+}
+
+/* ================= EXEC / STAFF CONTENT BLOCKS ================= */
+function renderExecContent(){
+  document.getElementById('execActions').innerHTML = `
+    <li>담당자별 진행률 최하위 영역 리소스 재배치 검토</li>
+    <li>긴급건 2건에 대한 임원 에스컬레이션 여부 결정</li>
+    <li>주간 정기 보고 체계로 진행 가시성 유지</li>`;
+  document.getElementById('execEffects').innerHTML = `
+    <li>병목 구간 조기 발견으로 일정 지연 리스크 사전 차단</li>
+    <li>담당자별 부하 시각화로 리소스 배분 의사결정 단축</li>
+    <li>고객사 대상 신뢰도 있는 진행 보고 근거 확보</li>`;
+}
+
+function renderStaffContent(){
+  document.getElementById('staffActions').innerHTML = `
+    <li>긴급건 우선 처리 후 일반건 순차 진행</li>
+    <li>미결 사항 발생 시 즉시 케이스 카드로 등록</li>
+    <li>완료 항목 체크 시 경영진 화면 실시간 반영 확인</li>`;
+  document.getElementById('staffEffects').innerHTML = `
+    <li>업무 우선순위 혼선 없이 긴급 이슈부터 대응 가능</li>
+    <li>진행 상황이 자동 동기화되어 별도 보고 리소스 절감</li>
+    <li>담당자 간 업무 중복/누락 방지</li>`;
+}
+
+/* ================= URGENT MODAL ================= */
+function showUrgent(c){
+  document.getElementById('urgentBody').innerHTML = `
+    <p><span class="text-slate-400">케이스 번호 | 제목</span><br><b>${c.no} | ${c.title}</b></p>
+    <p><span class="text-slate-400">한줄 요약</span><br>${c.summary}</p>
+    <p><span class="text-slate-400">비즈니스 맥락</span><br>${c.context}</p>
+    <p><span class="text-slate-400">미결</span><br>⚠️ ${c.pending}</p>
+  `;
+  const modal = document.getElementById('urgentModal');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+function closeUrgent(){
+  const modal = document.getElementById('urgentModal');
+  modal.classList.add('hidden'); modal.classList.remove('flex');
+}
+
+/* ================= INFO MODAL ================= */
+function openInfo(key){
+  const data = INFO_CONTENT[key];
+  document.getElementById('infoTitle').textContent = data.title;
+  document.getElementById('infoBody').innerHTML = data.body;
+  const modal = document.getElementById('infoModal');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+function closeInfo(){
+  const modal = document.getElementById('infoModal');
+  modal.classList.add('hidden'); modal.classList.remove('flex');
+}
+
+/* ================= LLM TOGGLE ================= */
+let llmOn = false;
+function toggleLLM(){
+  llmOn = !llmOn;
+  const dot = document.getElementById('llmDot');
+  const btn = document.getElementById('llmToggle');
+  const state = document.getElementById('llmState');
+  if(llmOn){
+    dot.style.transform = 'translateX(20px)';
+    btn.classList.add('bg-indigo-600'); btn.classList.remove('bg-slate-700');
+    state.textContent = 'ON'; state.classList.add('text-indigo-400'); state.classList.remove('text-slate-500');
+  } else {
+    dot.style.transform = 'translateX(0)';
+    btn.classList.remove('bg-indigo-600'); btn.classList.add('bg-slate-700');
+    state.textContent = 'OFF'; state.classList.remove('text-indigo-400'); state.classList.add('text-slate-500');
+  }
+}
+
+/* ================= DOWNLOAD AGREEMENT ================= */
+function downloadAgreement(){
+  const text = document.getElementById('agreementText').value;
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${currentCompany.company}_협의안.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
