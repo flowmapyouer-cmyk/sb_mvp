@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>세컨부스트 협업 대시보드 MVP</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:#f8fafc;}
   ::-webkit-scrollbar{width:6px;height:6px;}
@@ -164,11 +166,26 @@
         <button onclick="openInfo('client')" class="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center">!</button>
       </div>
     </div>
-    <textarea id="agreementText" rows="10" class="w-full bg-white border border-slate-300 rounded-xl p-4 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
-    <p class="text-xs text-slate-500 mt-2">✏️ 내용을 자유롭게 수정한 뒤 다운로드하면 수정본이 저장됩니다.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left border-collapse">
+        <thead>
+          <tr class="text-slate-500 text-xs border-b border-slate-200">
+            <th class="py-2 pr-4 font-medium">케이스</th>
+            <th class="py-2 pr-4 font-medium">기능명</th>
+            <th class="py-2 font-medium">제안 일정</th>
+          </tr>
+        </thead>
+        <tbody id="caseTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="caseDetailBox" class="mt-4 pt-4 border-t border-dashed border-slate-200"></div>
   </div>
 
 </div>
+
+<!-- ============ PDF 내보내기용 오프스크린 영역 ============ -->
+<div id="pdfExportArea" style="position:absolute; left:-9999px; top:0; width:800px; background:#ffffff; color:#1e293b; padding:32px; font-family:'Malgun Gothic', sans-serif;"></div>
 
 <!-- ============ 04·우선순위 판단 정보 모달 ============ -->
 <div id="infoModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 p-4" onclick="if(event.target===this)closeInfo()">
@@ -204,29 +221,24 @@ const DB = {
       {id:8, owner:"개발", text:"데이터 파이프라인 QA 테스트", done:false, urgent:false,
         case:{no:"TN-0240", title:"데이터 파이프라인 QA", summary:"마케팅 자동화 데이터 파이프라인 품질 검증 예정", context:"정식 오픈 전 데이터 정합성 확보가 필요한 단계", pending:"테스트 케이스 작성 중"}},
     ],
-    agreement:
-`■ 고객사 협의안 (테크노바 · 3분기 마케팅 자동화)
-
-1. 프로젝트 범위
-- CRM 연동 기반 마케팅 자동화 워크플로우 구축
-- 이벤트 트리거형 캠페인 발송 체계 도입
-
-2. 일정 합의
-- 1차 오픈: 2026-08-15 (베타)
-- 정식 오픈: 2026-09-01
-
-3. 핵심 협의 사항
-✅ CRM 인증 이슈 해결 전까지 임시 수동 발송 프로세스 병행
-✅ 브랜드 가이드 컬러 최종본 확정 후 템플릿 일괄 반영
-✅ 주간 단위 진행 보고 및 이슈 공유 체계 유지
-
-4. 미결 사항
-⚠️ CRM사 기술지원 회신 대기 (D+2)
-⚠️ 마케팅팀 컬러 가이드 재확인 대기
-
-5. 다음 액션
-🚀 CRM 인증 이슈 해결 즉시 자동 발송 전환
-🚀 9월 1일 정식 오픈 목표로 QA 일정 확정`
+    cases:[
+      {no:"01", feature:"CRM 연동 대시보드 진입 (실시간 캠페인 현황)", schedule:"이번 스프린트",
+        intro:"로그인 직후 캠페인 발송 현황을 바로 확인해 담당자가 이상 징후를 빠르게 인지할 수 있도록 합니다.",
+        guide:"CRM 인증 이슈 해결 전까지는 임시 수동 발송 데이터로 대시보드를 채워 이번 스프린트에 우선 반영합니다.",
+        discussion:"실시간 갱신 주기(1분/5분)는 CRM 연동 완료 후 다시 논의가 필요합니다."},
+      {no:"02", feature:"신규 리드 발생 알림 및 알림 설정", schedule:"이번 스프린트",
+        intro:"신규 리드가 유입되는 즉시 담당자에게 알려 대응 속도를 높입니다.",
+        guide:"이벤트 트리거 워크플로우 빌더와 연동되는 핵심 기능이라 이번 스프린트 우선 반영을 권장합니다.",
+        discussion:"알림 채널(메일/슬랙/문자)의 우선순위는 고객사 협의가 필요합니다."},
+      {no:"03", feature:"발송 이력 자동 정리 (30일 경과 로그)", schedule:"차기 버전",
+        intro:"오래된 발송 로그를 자동 정리해 대시보드 성능과 가독성을 유지합니다.",
+        guide:"방향은 확정됐고 세부 보관 기간(30일/60일)은 차기 버전에서 다듬습니다.",
+        discussion:"법적 보관 의무가 있는 로그 항목은 예외 처리 여부를 다시 확인해야 합니다."},
+      {no:"04", feature:"브랜드 가이드 컬러 자동 적용 방식", schedule:"이번 스프린트",
+        intro:"이메일 템플릿에 브랜드 컬러를 자동으로 적용해 산출물의 일관성을 확보합니다.",
+        guide:"팬톤 색상값 최종 확정 즉시 템플릿에 일괄 반영할 수 있도록 이번 스프린트에 구조를 잡습니다.",
+        discussion:"고객사 마케팅팀의 컬러 기준 회신이 오기 전까지는 임시 컬러로 진행 여부를 협의해야 합니다."}
+    ]
   },
 
   "블루오션": {
@@ -247,29 +259,24 @@ const DB = {
       {id:7, owner:"PM", text:"경영진 월간 리뷰 자료 작성", done:false, urgent:false,
         case:{no:"BO-0130", title:"경영진 월간 리뷰 자료", summary:"경영진 대상 월간 진행 리뷰 자료 작성 예정", context:"정기 보고 체계 유지를 위한 루틴 업무", pending:"이번 달 지표 취합 대기"}},
     ],
-    agreement:
-`■ 고객사 협의안 (블루오션 · 이커머스 리뉴얼)
-
-1. 프로젝트 범위
-- 결제/검색 성능 개선 및 체크아웃 UX 리뉴얼
-- 경영진 보고용 KPI 대시보드 구축
-
-2. 일정 합의
-- 결제 모듈 QA 완료: 2026-07-20
-- 체크아웃 리뉴얼 오픈: 2026-08-10
-
-3. 핵심 협의 사항
-✅ KPI 정의(세션 vs 유저 기준) 다음 워크숍에서 최종 확정
-✅ 체크아웃 이탈률 상승 원인 분석 후 롤백 여부 결정
-✅ 월간 경영진 리뷰 자료 정기 공유
-
-4. 미결 사항
-⚠️ KPI 정의 워크숍 일정 미확정
-⚠️ 체크아웃 A/B 테스트 결과 대기 중
-
-5. 다음 액션
-🚀 A/B 테스트 결과 기반 체크아웃 시안 확정
-🚀 결제 모듈 QA 통과 즉시 8월 10일 오픈 진행`
+    cases:[
+      {no:"01", feature:"결제 모듈 PG사 연동 (실시간 결제 상태 확인)", schedule:"이번 스프린트",
+        intro:"결제 진행 상태를 실시간으로 확인해 결제 실패 시 즉시 대응할 수 있도록 합니다.",
+        guide:"체크아웃 리뉴얼 오픈 일정에 직접 영향을 주는 항목이라 이번 스프린트 우선 반영을 권장합니다.",
+        discussion:"PG사 샌드박스 테스트 결과에 따라 연동 방식을 다시 조정해야 할 수 있습니다."},
+      {no:"02", feature:"체크아웃 이탈 알림 및 알림 설정", schedule:"이번 스프린트",
+        intro:"체크아웃 중 이탈이 발생하면 담당자에게 즉시 알려 원인 파악 속도를 높입니다.",
+        guide:"체크아웃 이탈률 급증 이슈와 직결되는 기능이라 이번 스프린트에 우선 반영합니다.",
+        discussion:"알림 기준(이탈률 몇 %부터 알림)은 A/B 테스트 결과를 보고 협의가 필요합니다."},
+      {no:"03", feature:"검색 필터 자동 초기화 (7일 미사용 시)", schedule:"차기 버전",
+        intro:"오래 방치된 검색 필터를 자동 초기화해 상품 노출 정확도를 유지합니다.",
+        guide:"방향은 확정됐고 세부 초기화 주기는 차기 버전에서 다듬습니다.",
+        discussion:"초기화 대상에서 제외할 필터(가격대 등)가 있는지 다시 확인이 필요합니다."},
+      {no:"04", feature:"KPI 대시보드 진입 방식 (세션 vs 유저 기준)", schedule:"이번 스프린트",
+        intro:"경영진이 로그인 직후 핵심 전환율 지표를 바로 확인할 수 있도록 합니다.",
+        guide:"대시보드 설계 착수를 위해 이번 스프린트 안에 측정 기준부터 확정해야 합니다.",
+        discussion:"세션 기준과 유저 기준 중 어느 쪽으로 통일할지 고객사 협의가 필요합니다."}
+    ]
   }
 };
 
@@ -412,7 +419,7 @@ function loadCompany(name){
   renderProgress();
   selectDecisionTab('blocker');
   showDefaultPanel();
-  document.getElementById('agreementText').value = currentCompany.agreement;
+  renderCaseTable();
 }
 
 /* ================= TASK LIST (1구역) ================= */
@@ -643,18 +650,70 @@ function toggleLLM(){
   }
 }
 
-/* ================= DOWNLOAD AGREEMENT ================= */
-function downloadAgreement(){
-  const text = document.getElementById('agreementText').value;
-  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${currentCompany.company}_협의안.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+/* ================= CASE TABLE (3구역) ================= */
+const SCHEDULE_STYLE = {
+  "이번 스프린트":"bg-red-50 text-red-600",
+  "차기 버전":"bg-slate-100 text-slate-500"
+};
+
+function renderCaseTable(){
+  const body = document.getElementById('caseTableBody');
+  body.innerHTML = currentCompany.cases.map((c, idx) => `
+    <tr onclick="showCaseDetail(${idx})" class="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50">
+      <td class="py-3 pr-4 text-slate-400">${c.no}</td>
+      <td class="py-3 pr-4 text-slate-700 break-keep">${c.feature}</td>
+      <td class="py-3"><span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${SCHEDULE_STYLE[c.schedule] || 'bg-slate-100 text-slate-500'}">${c.schedule}</span></td>
+    </tr>
+  `).join('');
+  showCaseDetail(0);
+}
+
+function showCaseDetail(idx){
+  const c = currentCompany.cases[idx];
+  document.getElementById('caseDetailBox').innerHTML = `
+    <p class="font-semibold text-slate-700 mb-3">[케이스 ${c.no}] ${c.feature}</p>
+    <div class="grid grid-cols-[100px_1fr] gap-y-2.5 text-[13px]">
+      <span class="text-slate-400">도입 취지</span><span class="text-slate-600 break-keep">${c.intro}</span>
+      <span class="text-slate-400">기술 가이드</span><span class="text-slate-600 break-keep">${c.guide}</span>
+      <span class="text-slate-400">협의 필요</span><span class="text-slate-600 break-keep">${c.discussion}</span>
+    </div>
+  `;
+}
+
+/* ================= DOWNLOAD AGREEMENT (PDF) ================= */
+async function downloadAgreement(){
+  const exportArea = document.getElementById('pdfExportArea');
+  exportArea.innerHTML = `
+    <h1 style="font-size:20px; font-weight:700; margin-bottom:20px;">고객사 협의안 — ${currentCompany.company}</h1>
+    ${currentCompany.cases.map(c => `
+      <div style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid #e2e8f0;">
+        <p style="font-size:14px; font-weight:700; margin-bottom:8px;">[케이스 ${c.no}] ${c.feature} <span style="font-size:11px; font-weight:600; color:#dc2626;">(${c.schedule})</span></p>
+        <p style="font-size:12px; margin:4px 0;"><b style="color:#64748b;">도입 취지</b> — ${c.intro}</p>
+        <p style="font-size:12px; margin:4px 0;"><b style="color:#64748b;">기술 가이드</b> — ${c.guide}</p>
+        <p style="font-size:12px; margin:4px 0;"><b style="color:#64748b;">협의 필요</b> — ${c.discussion}</p>
+      </div>
+    `).join('')}
+  `;
+
+  const canvas = await html2canvas(exportArea, { scale:2, backgroundColor:'#ffffff' });
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = 210, pageHeight = 297;
+  const imgWidth = pageWidth;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+  while(heightLeft > 0){
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+  pdf.save(`${currentCompany.company}_협의안.pdf`);
 }
 </script>
 </body>
