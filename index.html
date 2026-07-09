@@ -215,6 +215,38 @@
   </div>
 </div>
 
+<!-- ============ Custom LLM 학습 모드: 우선순위 판단 매트릭스 수정 ============ -->
+<div id="llmModal" class="fixed inset-0 bg-black/40 hidden items-start justify-center z-[60] p-4 pt-10 overflow-y-auto" onclick="if(event.target===this)closeLLMModal()">
+  <div class="bg-white border border-slate-200 rounded-2xl p-7 max-w-4xl w-full shadow-xl fade-in">
+    <div class="flex items-start justify-between mb-1">
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">우선순위 판단 매트릭스 수정</h3>
+        <p class="text-xs text-slate-400 mt-1">글자를 각 근거 칸으로 옮길 수 있습니다.</p>
+      </div>
+      <button onclick="closeLLMModal()" class="text-slate-400 hover:text-slate-700 text-xl leading-none">✕</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+      <div>
+        <p class="font-semibold text-slate-700 text-sm mb-2">우선순위 판단 근거</p>
+        <div id="llmSlots" class="space-y-2"></div>
+      </div>
+      <div>
+        <p class="font-semibold text-slate-700 text-sm mb-2">참고 사항으로 빠질 근거</p>
+        <div id="llmRefZone" ondragover="llmAllowDrop(event)" ondrop="llmDropOnRef(event)" class="min-h-[240px] bg-slate-50 border border-dashed border-slate-300 rounded-xl p-3 flex flex-col gap-2"></div>
+      </div>
+    </div>
+
+    <div class="mt-5">
+      <p class="font-semibold text-slate-700 text-sm mb-2">추가 사항</p>
+      <textarea id="llmExtraNotes" rows="3" placeholder="자유롭게 의견을 입력하세요."
+        class="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400"></textarea>
+    </div>
+
+    <button onclick="closeLLMModal()" class="w-full mt-5 bg-slate-900 hover:bg-slate-800 transition text-white font-semibold rounded-xl py-3 text-sm">반영하기</button>
+  </div>
+</div>
+
 <script>
 /* ================= MOCK DATABASE ================= */
 const DB = {
@@ -665,11 +697,76 @@ function toggleLLM(){
     dot.style.transform = 'translateX(20px)';
     btn.classList.add('bg-indigo-600'); btn.classList.remove('bg-slate-300');
     state.textContent = 'ON'; state.classList.add('text-indigo-600'); state.classList.remove('text-slate-500');
+    openLLMModal();
   } else {
     dot.style.transform = 'translateX(0)';
     btn.classList.remove('bg-indigo-600'); btn.classList.add('bg-slate-300');
     state.textContent = 'OFF'; state.classList.remove('text-indigo-600'); state.classList.add('text-slate-500');
   }
+}
+
+/* ================= LLM 매트릭스 팝업 (드래그앤드롭) ================= */
+const LLM_DEFAULT_ITEMS = [
+  '창업자의 강력한 요구가 있는가',
+  '데모·마감 등 외부 일정이 걸렸는가',
+  '대표·전문가가 직접 지시했는가',
+  '고객 문의·불만이 집중되는가',
+  '이미 차기 버전으로 미뤄졌는가',
+  '정책·수치가 아직 안 정해졌는가',
+  '아키텍처 충돌·외부 의존 등 재작업 비용이 큰가'
+];
+const LLM_NUMERALS = ['①','②','③','④','⑤','⑥','⑦'];
+let llmModalBuilt = false;
+
+function buildLLMSlots(){
+  const wrap = document.getElementById('llmSlots');
+  wrap.innerHTML = LLM_NUMERALS.map((n, i) => `
+    <div class="llm-slot flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2" ondragover="llmAllowDrop(event)" ondrop="llmDropOnSlot(event, this)">
+      <span class="w-6 h-6 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center shrink-0">${n}</span>
+      <div id="llmItem${i+1}" class="llm-chip flex-1 bg-white border border-slate-200 rounded-md px-3 py-2 text-[13px] text-slate-700 break-keep cursor-move" draggable="true" ondragstart="llmDragStart(event)">${LLM_DEFAULT_ITEMS[i]}</div>
+    </div>
+  `).join('');
+  document.getElementById('llmRefZone').innerHTML = '';
+  document.getElementById('llmExtraNotes').value = '';
+}
+
+function llmDragStart(e){
+  e.dataTransfer.setData('text/plain', e.target.id);
+}
+function llmAllowDrop(e){ e.preventDefault(); }
+
+function llmDropOnSlot(e, slotEl){
+  e.preventDefault();
+  const draggedId = e.dataTransfer.getData('text/plain');
+  const dragged = document.getElementById(draggedId);
+  if(!dragged) return;
+  const existing = slotEl.querySelector('.llm-chip');
+  const sourceParent = dragged.parentElement;
+  if(existing && existing !== dragged){
+    sourceParent.appendChild(existing);
+  }
+  slotEl.appendChild(dragged);
+}
+
+function llmDropOnRef(e){
+  e.preventDefault();
+  const draggedId = e.dataTransfer.getData('text/plain');
+  const dragged = document.getElementById(draggedId);
+  if(dragged) document.getElementById('llmRefZone').appendChild(dragged);
+}
+
+function openLLMModal(){
+  if(!llmModalBuilt){
+    buildLLMSlots();
+    llmModalBuilt = true;
+  }
+  const modal = document.getElementById('llmModal');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+}
+
+function closeLLMModal(){
+  const modal = document.getElementById('llmModal');
+  modal.classList.add('hidden'); modal.classList.remove('flex');
 }
 
 /* ================= CASE TABLE (3구역) ================= */
