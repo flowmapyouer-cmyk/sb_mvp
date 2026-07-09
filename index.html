@@ -19,6 +19,21 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-16">
 
+<!-- ============ 최초 진입 안내 팝업 ============ -->
+<div id="welcomeModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+  <div class="bg-white border border-slate-200 rounded-2xl p-8 max-w-5xl w-full shadow-xl fade-in overflow-x-auto">
+    <p class="text-lg font-bold mb-5">📢 대시보드 체험 가이드</p>
+
+    <p class="text-[15px] text-slate-700 leading-relaxed mb-4 whitespace-nowrap">본 대시보드는 실제 구현된 기능과 더미 데이터를 기반으로 작동하는 프로토타입입니다.</p>
+
+    <p class="text-[15px] text-slate-700 leading-relaxed mb-4 whitespace-nowrap">체험 방법: 우측 상단 검색창에 '테크' 또는 '테크노바'를 입력 후 <span class="inline-flex align-middle mx-1 w-6 h-6 rounded-full bg-slate-900 items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/></svg></span> 버튼을 눌러보세요.</p>
+
+    <p class="text-[15px] text-slate-700 leading-relaxed mb-6 whitespace-nowrap">참고사항: 맥락 필터(언어 필터) 및 Custom LLM 학습 모드는 조작은 가능하나, 실제 화면 데이터가 변경되지는 않는 연출용 기능입니다.</p>
+
+    <button onclick="closeWelcome()" class="w-full bg-slate-900 hover:bg-slate-800 transition text-white font-semibold rounded-xl py-3 text-sm">기능 직접 확인하기</button>
+  </div>
+</div>
+
 <!-- ============ TOP: 업로드 & 필터 ============ -->
 <div class="max-w-7xl mx-auto px-4 pt-6">
   <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -630,6 +645,11 @@ function openInfo(key){
 function closeInfo(){
   const modal = document.getElementById('infoModal');
   modal.classList.add('hidden'); modal.classList.remove('flex');
+}
+
+/* ================= WELCOME GUIDE ================= */
+function closeWelcome(){
+  document.getElementById('welcomeModal').classList.add('hidden');
 }
 
 /* ================= LLM TOGGLE ================= */
